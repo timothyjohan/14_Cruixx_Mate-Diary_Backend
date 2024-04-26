@@ -49,6 +49,7 @@ CREATE TABLE Animal (
     nama_hewan VARCHAR(255) NOT NULL,
     kode_hewan VARCHAR(255),
     asal_hewan VARCHAR(255),
+    status_is_child INT NOT NULL,
     PRIMARY KEY (id_animal),
     KEY id_user (id_user),
     FOREIGN KEY (id_user) REFERENCES User(id_user)

@@ -85,7 +85,7 @@ app.post("/login", async function (req, res) {
 });
 
 app.post("/register", async function (req, res) {
-  const { username, nickname, password, email } = req.body;
+  const { username, nickname, password, email, confirm_password } = req.body;
 
   if (!username || !nickname || !password || !email) {
     return res.status(400).send("Field tidak boleh kosong");
@@ -112,6 +112,12 @@ app.post("/register", async function (req, res) {
 
   if (countExistingEmail.jum >= 1) {
     return res.status(400).send({ status: 0, msg: "Email sudah ada" });
+  }
+
+  if (password !== confirm_password) {
+    return res
+      .status(400)
+      .send({ status: 0, msg: "Password dan confirm password tidak sama" });
   }
 
   const registerQuery =
@@ -174,13 +180,15 @@ app.post("/karyawan", async (req, res) => {
   let currUser = null;
 
   if (!nama_karyawan || !no_telp || !jabatan) {
-    return res.status(400).json("Field tidak boleh kosong");
+    return res
+      .status(400)
+      .json({ status: 400, msg: "Field tidak boleh kosong" });
   }
 
   try {
     currUser = await verifyUser(username, password);
   } catch (error) {
-    return res.status(403).send({ status: 0, msg: error.message.toString() });
+    return res.status(403).send({ status: 403, msg: error.message.toString() });
   }
 
   let q = await Karyawan.create({
@@ -191,7 +199,7 @@ app.post("/karyawan", async (req, res) => {
   });
 
   return res.status(201).json({
-    status: 200,
+    status: 201,
     msg: "Berhasil add Karyawan " + nama_karyawan,
   });
 });
@@ -201,14 +209,16 @@ app.get("/karyawan", async (req, res) => {
   const { username, password } = req.body;
 
   if (!username || !password) {
-    return res.status(400).json("Field tidak boleh kosong");
+    return res
+      .status(400)
+      .json({ status: 400, msg: "Field tidak boleh kosong" });
   }
 
   let currUser = null;
   try {
     currUser = await verifyUser(username, password);
   } catch (error) {
-    return res.status(403).send({ status: 0, msg: error.message.toString() });
+    return res.status(403).send({ status: 403, msg: error.message.toString() });
   }
 
   let h = await Karyawan.findAll({
@@ -229,14 +239,16 @@ app.get("/karyawan/:id", async (req, res) => {
   const { id } = req.params;
 
   if (!username || !password) {
-    return res.status(400).json("Field tidak boleh kosong");
+    return res
+      .status(400)
+      .json({ status: 400, msg: "Field tidak boleh kosong" });
   }
 
   let currUser = null;
   try {
     currUser = await verifyUser(username, password);
   } catch (error) {
-    return res.status(403).send({ status: 0, msg: error.message.toString() });
+    return res.status(403).send({ status: 403, msg: error.message.toString() });
   }
 
   let h = await Karyawan.findOne({
@@ -245,6 +257,10 @@ app.get("/karyawan/:id", async (req, res) => {
       id_karyawan: id,
     },
   });
+
+  if (!h) {
+    return res.status(404).json({ status: 404, msg: "Karyawan not found" });
+  }
 
   return res.status(200).json({
     status: 200,

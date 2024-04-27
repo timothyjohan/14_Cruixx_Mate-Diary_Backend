@@ -9,8 +9,10 @@ const sequelize = getDB();
 const { QueryTypes } = require("sequelize");
 const Joi = require("joi").extend(require("@joi/date"));
 const axios = require("axios");
-
 const api_key_ninja = "gkTS6Qheb1LyvqHe3cf9uw==o0kuQj1oopyTEmaZ";
+
+const cors = require('cors')
+app.use(cors)
 
 // model
 const User = require("./model/User");
@@ -312,6 +314,70 @@ app.post("/breed", async function (req, res) {
     history: history,
   });
 });
+
+app.get("/history-breed", async function(req, res) {
+    const {animal_id} = req.query
+
+    const breedQuery = `
+        SELECT 
+            D_kawin.kawin_status AS Breed_Status,
+            Fem_Animal.nama_hewan AS Female_Animal_Name,
+            Fem_Animal.nama_panggilan AS Female_Animal_Nickname,
+            Male_Animal.nama_hewan AS Male_Animal_Name,
+            Male_Animal.nama_panggilan AS Male_Animal_Nickname,
+            User.nickname AS User_Nickname
+        FROM 
+            H_kawin
+        JOIN 
+            D_kawin ON H_kawin.id_h_kawin = D_kawin.id_session
+        JOIN 
+            Animal AS Fem_Animal ON H_kawin.animal_fem = Fem_Animal.id_animal
+        JOIN 
+            Animal AS Male_Animal ON H_kawin.animal_male = Male_Animal.id_animal
+        JOIN 
+            User ON H_kawin.id_user = User.id_user
+        ${animal_id ? 
+            `
+                WHERE
+                    Fem_Animal.id_animal = :animal_id OR Male_Animal.id_animal = :animal_id
+            ` : ''
+        }
+        ORDER BY 
+            D_kawin.kawin_timestamp DESC
+    `;
+
+    if (animal_id) {
+        const breedHistory = await sequelize.query(breedQuery, {
+            replacements: { animal_id },
+            type: sequelize.QueryTypes.SELECT
+        });
+        return res.status(200).json(breedHistory)
+    } else {
+        const breedHistory = await sequelize.query(breedQuery, {
+            type: sequelize.QueryTypes.SELECT
+        });
+        return res.status(200).json(breedHistory)
+    }
+})
+
+app.post("/add-animal", async function(req, res) {
+    const {id_user, nama_hewan, status_is_child, nama_panggilan, kode_hewan, asal_hewan} = req.body
+
+    if(!id_user || !nama_hewan || status_is_child === undefined) {
+        return res.status(400).send("Field tidak boleh kosong")
+    }
+
+    const breedQuery = `
+        INSERT INTO Animal (id_user, nama_hewan, status_is_child, nama_panggilan, kode_hewan, asal_hewan)
+        VALUES (:id_user, :nama_hewan, :status_is_child, :nama_panggilan, :kode_hewan, :asal_hewan)
+    `;
+
+    await sequelize.query(breedQuery, {
+        replacements: { id_user, nama_hewan, status_is_child, nama_panggilan, kode_hewan, asal_hewan },
+        type: sequelize.QueryTypes.INSERT
+    });
+    return res.status(201).send(`Success add new animal ${nama_panggilan ? nama_panggilan : nama_hewan}`)
+})
 
 app.listen(app.get("port"), () => {
   console.log(`Server started at http://localhost:${app.get("port")}`);

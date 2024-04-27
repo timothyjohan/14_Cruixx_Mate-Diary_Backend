@@ -921,6 +921,68 @@ app.get("/prediction/h_kawin", [verifyUser], async (req, res) => {
   });
 });
 
+app.get("/company", async (req, res) => {
+  const { id } = req.query;
+
+  if (!id) {
+    return res.status(400).json({
+      status: 400,
+      msg: "Semua field wajib diisi",
+    });
+  }
+
+  let h = await Company.findOne({
+    where: {
+      id_company: id,
+    },
+  });
+
+  if (!h) {
+    return res.status(404).json({
+      status: 404,
+      msg: "id company not found",
+    });
+  }
+
+  return res.status(200).json({
+    status: 200,
+    msg: h,
+  });
+});
+
+app.put("/company", async (req, res) => {
+  const { id } = req.query;
+
+  if (!id) {
+    return res.status(400).json({
+      status: 400,
+      msg: "Semua field wajib diisi",
+    });
+  }
+
+  let h = await Company.findOne({
+    where: {
+      id_company: id,
+    },
+  });
+
+  if (!h) {
+    return res.status(404).json({
+      status: 404,
+      msg: "id company not found",
+    });
+  }
+
+  h.update({
+    status: "PREMIUM",
+  });
+
+  return res.status(200).json({
+    status: 200,
+    msg: "berhasil update subscription",
+  });
+});
+
 app.listen(app.get("port"), () => {
   console.log(`Server started at http://localhost:${app.get("port")}`);
 });

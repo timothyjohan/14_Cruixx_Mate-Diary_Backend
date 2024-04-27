@@ -48,7 +48,7 @@ async function getAnimalByID(id_comp, id_animal) {
 
 function selisih(tgl) {
   // let tgl_user = new Date(parseStringToDate(tgl));
-  let tgl_kelahiran = new Date(tgl);
+  let tgl_kelahiran = tgl;
   let currDate = new Date();
   // Menghitung selisih dalam hari
   let differenceInDays = (tgl_kelahiran - currDate) / (1000 * 60 * 60 * 24);
@@ -616,16 +616,12 @@ app.post("/history", [verifyUser], async function (req, res) {
   let lamaWkt = ax.data[0].characteristics.gestation_period.split(" ")[0];
   lamaWkt = parseInt(lamaWkt);
 
-  let wktLahir = new Date();
-  wktLahir.setDate(wktLahir.getDate() + lamaWkt);
-
   let h_kawin = await H_kawin.create({
     id_company: currUser.id_company,
     id_user: currUser.id_user,
     animal_fem: animal_fem,
     animal_male: animal_male,
     status: "BEFORE",
-    tgl_kelahiran: wktLahir,
     durasi_hamil: lamaWkt,
   });
 
@@ -750,8 +746,15 @@ app.put("/history/details", [verifyUser], async (req, res) => {
   });
 
   let cd = -1;
-  if (status == 1) {
-    cd = selisih(h_kawin.tgl_kelahiran);
+  let wktLahir = new Date();
+  wktLahir.setDate(wktLahir.getDate() + h_kawin.durasi_hamil);
+  if (status == 2) {
+    cd = selisih(wktLahir);
+
+    h_kawin.update({
+      tgl_kelahiran: wktLahir.toLocaleString(),
+      status: "ONGOING",
+    });
   }
 
   d_kawin.update({

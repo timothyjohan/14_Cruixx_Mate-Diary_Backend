@@ -88,7 +88,11 @@ INSERT INTO animal (id_company,nama_panggilan,nama_hewan,gender,kode_hewan,asal_
 (1, 'Lulu', 'Cheetah', 'FEMALE', 'ACA0000004','Animal Conservation A', 1, 2, 3),
 (1, 'Lala', 'Cheetah', 'FEMALE', 'ACA0000005','Animal Conservation A', 1, 2, 3),
 (1, 'Lili', 'Cheetah', 'FEMALE', 'ACA0000006','Animal Conservation A', 1, 2, 3),
-(1, 'Luis', 'Cheetah', 'MALE', 'ACA0000007','Animal Conservation A', 1, 1, 3);
+(1, 'Luis', 'Cheetah', 'MALE', 'ACA0000007','Animal Conservation A', 1, 1, 3),
+(1, 'Neo', 'Cheetah', 'MALE', 'ACA0000008','Animal Conservation A', 1, 6, 7),
+(1, 'Lumiya', 'Cheetah', 'FEMALE', 'ACA0000009','Animal Conservation A', 1, 6, 7),
+(1, 'Cimoy', 'Cheetah', 'FEMALE', 'ACA0000010','Animal Conservation A', 1, 5, 7),
+(1, 'Paimon', 'Cheetah', 'FEMALE', 'ACA0000011','Animal Conservation A', 1, 5, 7);
 
 --
 -- Table structure for table `H_kawin`
@@ -102,7 +106,7 @@ CREATE TABLE H_kawin (
     animal_male INT NOT NULL,
     status VARCHAR(255) NOT NULL,
     durasi_hamil INT NOT NULL,
-    tgl_kelahiran timestamp,
+    tgl_kelahiran DATETIME,
     PRIMARY KEY (id_h_kawin),
     KEY animal_fem (animal_fem),
     KEY animal_male (animal_male),
@@ -113,6 +117,16 @@ CREATE TABLE H_kawin (
     FOREIGN KEY (animal_male) REFERENCES Animal(id_animal),
     FOREIGN KEY (id_user) REFERENCES User(id_user)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO H_kawin (id_company,id_user,animal_fem,animal_male,status,durasi_hamil,tgl_kelahiran) values
+(1, 1, 1,3, 'SUCCESS', 90, "2024-07-27 00:24:23"),
+(1, 1, 1,3, 'FAIL', 90, "2024-12-27 12:14:00"),
+(1, 1, 2,3, 'SUCCESS', 90, "2025-03-22 05:44:23"),
+(1, 1, 2,3, 'SUCCESS', 90, "2025-08-11 10:29:47"),
+(1, 1, 2,3, 'FAIL', 90, "2025-11-03 03:55:55"),
+(1, 1, 2,3, 'SUCCESS', 90, "2026-02-28 13:51:33"),
+(1, 1, 2,3, 'ONGOING', 90, "2026-05-27 00:00:00"),
+(1, 1, 1,3, 'BEFORE', 90, "2026-06-24 17:17:49");
 
 --
 -- Table structure for table `D_kawin`
@@ -127,6 +141,30 @@ CREATE TABLE D_kawin (
     KEY id_h_kawin (id_h_kawin),
     FOREIGN KEY (id_h_kawin) REFERENCES H_kawin(id_h_kawin)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO D_kawin (id_h_kawin,kawin_status,waktu_kawin) values
+(1,1,'2020-04-27 09:39:40'),
+(1,2,'2020-04-27 09:49:40'),
+(2,1,'2021-04-27 09:39:40'),
+(2,2,'2021-04-27 09:49:40'),
+(2,1,'2021-04-27 10:10:40'),
+(3,2,'2021-04-30 09:39:40'),
+(3,2,'2021-04-30 09:49:40'),
+(3,2,'2021-04-30 10:10:40'),
+(4,1,'2021-12-30 09:39:40'),
+(4,2,'2021-12-30 09:49:40'),
+(4,2,'2021-12-30 10:10:40'),
+(5,2,'2022-7-30 09:39:40'),
+(5,2,'2022-7-30 09:49:40'),
+(5,2,'2022-7-30 10:10:40'),
+(6,1,'2022-12-30 09:39:40'),
+(6,1,'2022-12-30 09:49:40'),
+(6,2,'2022-12-30 10:10:40'),
+(7,1,'2024-04-22 09:49:40'),
+(7,2,'2024-04-22 10:10:40'),
+(8,1,'2024-04-28 09:49:40'),
+(8,2,'2024-04-28 10:10:40'),
+(8,0,'2024-04-28 10:15:40');
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;

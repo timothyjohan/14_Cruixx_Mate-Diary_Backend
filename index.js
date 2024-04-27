@@ -513,20 +513,54 @@ app.get("/animal/:id", [verifyUser], async (req, res) => {
 
   let currUser = req.query.user;
 
-  let h = await Animal.findOne({
+  let currAnimal = await Animal.findOne({
     where: {
       id_company: currUser.id_company,
       id_animal: id,
     },
   });
 
-  if (!h) {
+  if (!currAnimal) {
     return res.status(404).json({ status: 404, msg: "Animal not found" });
   }
 
+  let nickname_ibu = null;
+  let kode_ibu = null;
+
+  let parent_fem = await getAnimalByID(
+    currUser.id_company,
+    currAnimal.parent_fem
+  );
+
+  if (parent_fem) {
+    nickname_ibu = parent_fem.nama_panggilan;
+    kode_ibu = parent_fem.kode_hewan;
+  }
+
+  let nickname_ayah = null;
+  let kode_ayah = null;
+
+  let parent_male = await getAnimalByID(
+    currUser.id_company,
+    currAnimal.parent_male
+  );
+
+  if (parent_male) {
+    nickname_ayah = parent_male.nama_panggilan;
+    kode_ayah = parent_male.kode_hewan;
+  }
+
+  let currAnimalVal = currAnimal.dataValues;
+
   return res.status(200).json({
     status: 200,
-    msg: h,
+    msg: {
+      ...currAnimalVal,
+      nama_ibu: nickname_ibu,
+      kode_ibu: kode_ibu,
+      nama_ayah: nickname_ayah,
+      kode_ayah: kode_ayah,
+    },
   });
 });
 

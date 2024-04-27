@@ -50,6 +50,7 @@ function selisih(tgl) {
   // let tgl_user = new Date(parseStringToDate(tgl));
   let tgl_kelahiran = tgl;
   let currDate = new Date();
+  //   currDate.setDate(currDate.getDate() + 6);
   // Menghitung selisih dalam hari
   let differenceInDays = (tgl_kelahiran - currDate) / (1000 * 60 * 60 * 24);
   //   supaya jadi 00:00:00
@@ -86,56 +87,59 @@ async function verifyUser(req, res, next) {
 
 // midtrans
 app.post("/midtrans", async function (req, res) {
-    const {username} = req.body
+  const { username } = req.body;
 
-    if(!username) {
-        return res.status(400).send("Field tidak boleh kosong")
-    }
+  if (!username) {
+    return res.status(400).send("Field tidak boleh kosong");
+  }
 
-    const existingUserQuery =
+  const existingUserQuery =
     "SELECT count(*) as jum FROM User WHERE username=:username";
-    const [countExistingUser] = await sequelize.query(existingUserQuery, {
-        replacements: { username },
-        type: sequelize.QueryTypes.SELECT,
+  const [countExistingUser] = await sequelize.query(existingUserQuery, {
+    replacements: { username },
+    type: sequelize.QueryTypes.SELECT,
+  });
+
+  if (countExistingUser.jum === 0) {
+    return res.status(403).send({ status: 0, msg: "Username tidak terdaftar" });
+  }
+
+  const midtransClient = require("midtrans-client");
+  let snap = new midtransClient.Snap({
+    isProduction: false,
+    serverKey: "SB-Mid-server-CKp9TOLZwarw9yQJmntI30yh",
+  });
+
+  const orderID = `MATE-DIARY-CRUIXX-${Math.floor(
+    100000 + Math.random() * 900000
+  )}`;
+
+  let parameter = {
+    transaction_details: {
+      order_id: orderID,
+      gross_amount: 299000,
+    },
+    credit_card: {
+      secure: true,
+    },
+    customer_details: {
+      ...req.body,
+    },
+  };
+
+  snap
+    .createTransaction(parameter)
+    .then((transaction) => {
+      let transactionToken = transaction.token;
+      return res.status(200).json({
+        status: 1,
+        token: transactionToken,
+      });
+    })
+    .catch((e) => {
+      console.log(e);
+      return res.status(400).send("Midtrans error");
     });
-
-    if (countExistingUser.jum === 0) {
-        return res.status(403).send({ status: 0, msg: "Username tidak terdaftar" });
-    }
-
-    const midtransClient = require('midtrans-client');
-    let snap = new midtransClient.Snap({
-        isProduction : false,
-        serverKey : 'SB-Mid-server-CKp9TOLZwarw9yQJmntI30yh'
-    });
-
-    const orderID = `MATE-DIARY-CRUIXX-${Math.floor(100000 + Math.random() * 900000)}`
-
-    let parameter = {
-        "transaction_details": {
-            "order_id": orderID,
-            "gross_amount": 299000
-        },
-        "credit_card":{
-            "secure" : true
-        },
-        "customer_details": {
-            ...req.body
-        }
-    };
-
-    snap.createTransaction(parameter)
-        .then((transaction)=>{
-            let transactionToken = transaction.token;
-            return res.status(200).json({
-                status: 1,
-                token: transactionToken
-            })
-        })
-        .catch((e) => {
-            console.log(e)
-            return res.status(400).send("Midtrans error")
-        })
 });
 
 // api
@@ -1034,6 +1038,33 @@ app.put("/company", async (req, res) => {
   return res.status(200).json({
     status: 200,
     msg: "berhasil update subscription",
+  });
+});
+
+app.get("/countdown", [verifyUser], async (req, res) => {
+  const { id_h_kawin } = req.query;
+  let currUser = req.query.user;
+
+  let q = await H_kawin.findOne({
+    where: {
+      id_company: currUser.id_company,
+      id_h_kawin: id_h_kawin,
+    },
+  });
+
+  if (!q) {
+    return res.status(404).json({
+      status: 404,
+      msg: "id company not found",
+    });
+  }
+
+  let wkt = new Date(q.tgl_kelahiran);
+  let cd = selisih(wkt);
+
+  return res.status(200).json({
+    status: 200,
+    msg: cd,
   });
 });
 

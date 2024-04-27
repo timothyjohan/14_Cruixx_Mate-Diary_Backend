@@ -122,6 +122,7 @@ CREATE TABLE D_kawin (
     id_d_kawin INT AUTO_INCREMENT,
     id_h_kawin INT NOT NULL,
     kawin_status INT NOT NULL, -- berhasil / gagal
+    waktu_kawin timestamp NOT NULL,
     PRIMARY KEY (id_d_kawin),
     KEY id_h_kawin (id_h_kawin),
     FOREIGN KEY (id_h_kawin) REFERENCES H_kawin(id_h_kawin)

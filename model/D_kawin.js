@@ -19,6 +19,10 @@ D_kawin.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    waktu_kawin: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
   },
   {
     sequelize,

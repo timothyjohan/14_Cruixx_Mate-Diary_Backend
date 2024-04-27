@@ -230,14 +230,15 @@ app.get("/search_animal", async function (req, res) {
 
 // add karyawan
 app.post("/karyawan", [verifyUser], async (req, res) => {
-  const { nama_karyawan, username, password } = req.body;
-  let currUser = req.body.user;
+  const { nickname, username, password } = req.body;
 
-  if (!nama_karyawan || !no_telp || !jabatan) {
-    return res
-      .status(400)
-      .json({ status: 400, msg: "Field tidak boleh kosong" });
+  if (!nickname || !username || !password) {
+    return res.status(400).json({
+      status: 400,
+      msg: "Semua field harus diisi",
+    });
   }
+  let currUser = req.query.user;
 
   let validUser = await User.findOne({
     where: {
@@ -245,13 +246,7 @@ app.post("/karyawan", [verifyUser], async (req, res) => {
     },
   });
 
-  let validKaryawan = await Karyawan.findOne({
-    where: {
-      username: username,
-    },
-  });
-
-  if (validUser || validKaryawan) {
+  if (validUser) {
     return res.status(400).json({
       status: 400,
       msg: "Username sudah dipakai",
@@ -259,25 +254,27 @@ app.post("/karyawan", [verifyUser], async (req, res) => {
   }
 
   let q = await Karyawan.create({
-    id_user: currUser.id_user,
-    nama_karyawan: nama_karyawan,
+    id_company: currUser.id_company,
     username: username,
     password: password,
+    nickname: nickname,
+    email: "-",
+    role: "PEGAWAI",
   });
 
   return res.status(201).json({
     status: 201,
-    msg: "Berhasil add Karyawan " + nama_karyawan,
+    msg: "Berhasil add Karyawan " + nickname,
   });
 });
 
 // ambil detail all karyawan
 app.get("/karyawan", [verifyUser], async (req, res) => {
-  let currUser = req.body.user;
+  let currUser = req.query.user;
 
-  let h = await Karyawan.findAll({
+  let h = await User.findAll({
     where: {
-      id_user: currUser.id_user,
+      id_company: currUser.id_company,
     },
   });
 
@@ -291,12 +288,12 @@ app.get("/karyawan", [verifyUser], async (req, res) => {
 app.get("/karyawan/:id", [verifyUser], async (req, res) => {
   const { id } = req.params;
 
-  let currUser = req.body.user;
+  let currUser = req.query.user;
 
-  let h = await Karyawan.findOne({
+  let h = await User.findOne({
     where: {
-      id_user: currUser.id_user,
-      id_karyawan: id,
+      id_company: currUser.id_company,
+      id_user: id,
     },
   });
 
@@ -590,6 +587,7 @@ app.post("/history", [verifyUser], async function (req, res) {
   let d_kawin = await D_kawin.create({
     id_h_kawin: h_kawin.id_h_kawin,
     kawin_status: 0,
+    waktu_kawin: new Date(),
   });
 
   return res.status(201).json({
@@ -607,9 +605,28 @@ app.get("/history", [verifyUser], async (req, res) => {
     },
   });
 
+  let hasil = [];
+
+  for (let i = 0; i < q.length; i++) {
+    const e = q[i];
+
+    let fem = await getAnimalByID(currUser.id_company, e.animal_fem);
+    let male = await getAnimalByID(currUser.id_company, e.animal_male);
+
+    hasil.push({
+      id_h_kawin: e.id_h_kawin,
+      user: currUser.nickname,
+      animal_fem: fem.nama_panggilan,
+      animal_male: male.nama_panggilan,
+      status: e.status,
+      durasi_hamil: e.durasi_hamil,
+      tgl_kelahiran: e.tgl_kelahiran,
+    });
+  }
+
   return res.status(200).json({
     status: 200,
-    msg: q,
+    msg: hasil,
   });
 });
 
@@ -625,6 +642,21 @@ app.get("/history/details", [verifyUser], async (req, res) => {
   return res.status(200).json({
     status: 200,
     msg: q,
+  });
+});
+
+app.post("/history/details", [verifyUser], async (req, res) => {
+  const { id_h_kawin } = req.query;
+  let currUser = req.query.user;
+
+  let q = await D_kawin.create({
+    id_h_kawin: id_h_kawin,
+    kawin_status: 0,
+  });
+
+  return res.status(200).json({
+    status: 200,
+    msg: "berhasil add d kawin",
   });
 });
 

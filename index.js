@@ -84,6 +84,60 @@ async function verifyUser(req, res, next) {
   next();
 }
 
+// midtrans
+app.post("/midtrans", async function (req, res) {
+    const {username} = req.body
+
+    if(!username) {
+        return res.status(400).send("Field tidak boleh kosong")
+    }
+
+    const existingUserQuery =
+    "SELECT count(*) as jum FROM User WHERE username=:username";
+    const [countExistingUser] = await sequelize.query(existingUserQuery, {
+        replacements: { username },
+        type: sequelize.QueryTypes.SELECT,
+    });
+
+    if (countExistingUser.jum === 0) {
+        return res.status(403).send({ status: 0, msg: "Username tidak terdaftar" });
+    }
+
+    const midtransClient = require('midtrans-client');
+    let snap = new midtransClient.Snap({
+        isProduction : false,
+        serverKey : 'SB-Mid-server-CKp9TOLZwarw9yQJmntI30yh'
+    });
+
+    const orderID = `MATE-DIARY-CRUIXX-${Math.floor(100000 + Math.random() * 900000)}`
+
+    let parameter = {
+        "transaction_details": {
+            "order_id": orderID,
+            "gross_amount": 299000
+        },
+        "credit_card":{
+            "secure" : true
+        },
+        "customer_details": {
+            ...req.body
+        }
+    };
+
+    snap.createTransaction(parameter)
+        .then((transaction)=>{
+            let transactionToken = transaction.token;
+            return res.status(200).json({
+                status: 1,
+                token: transactionToken
+            })
+        })
+        .catch((e) => {
+            console.log(e)
+            return res.status(400).send("Midtrans error")
+        })
+});
+
 // api
 app.post("/login", async function (req, res) {
   const { username, password } = req.body;

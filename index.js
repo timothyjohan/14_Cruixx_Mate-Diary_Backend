@@ -768,6 +768,35 @@ app.put("/history/details", [verifyUser], async (req, res) => {
   });
 });
 
+app.put("/history", [verifyUser], async (req, res) => {
+  let { id_h_kawin, status } = req.query;
+
+  let currUser = req.query.user;
+
+  if (!id_h_kawin || !status) {
+    return res.status(200).json({
+      status: 200,
+      msg: "semua field wajib diisi",
+    });
+  }
+
+  let h_kawin = await H_kawin.findOne({
+    where: {
+      id_company: currUser.id_company,
+      id_h_kawin: id_h_kawin,
+    },
+  });
+
+  h_kawin.update({
+    status: status,
+  });
+
+  return res.status(200).json({
+    status: 200,
+    msg: "berhasil update h kawin",
+  });
+});
+
 app.listen(app.get("port"), () => {
   console.log(`Server started at http://localhost:${app.get("port")}`);
 });

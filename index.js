@@ -31,13 +31,18 @@ Animal.belongsTo(User, { foreignKey: "id_user" });
 Family.hasMany(Child, { foreignKey: "id_user" });
 Child.belongsTo(Family, { foreignKey: "id_user" });
 
-async function verifyUser(username, password) {
-  //   const verifyUserQuery =
-  //     "SELECT count(*) FROM User WHERE username=:username AND password=:password";
-  //   const [countVerifyUser] = await sequelize.query(verifyUserQuery, {
-  //     replacements: { username, password },
-  //     type: sequelize.QueryTypes.SELECT,
-  //   });
+// func helper
+
+// middleware
+async function verifyUser(req, res, next) {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res
+      .status(400)
+      .json({ status: 400, msg: "Username dan password tidak boleh kosong" });
+  }
+
   let h = await User.findOne({
     where: {
       username: username,
@@ -46,12 +51,16 @@ async function verifyUser(username, password) {
   });
 
   if (!h) {
-    throw new Error("Username / Password salah");
+    return res
+      .status(403)
+      .json({ status: 403, msg: "Username / Password salah" });
   }
 
-  return h;
+  req.body.user = h;
+  next();
 }
 
+// api
 app.post("/login", async function (req, res) {
   const { username, password } = req.body;
 
@@ -175,20 +184,14 @@ app.get("/search_animal", async function (req, res) {
 });
 
 // add karyawan
-app.post("/karyawan", async (req, res) => {
-  const { username, password, nama_karyawan, no_telp, jabatan } = req.body;
-  let currUser = null;
+app.post("/karyawan", [verifyUser], async (req, res) => {
+  const { nama_karyawan, no_telp, jabatan } = req.body;
+  let currUser = req.body.user;
 
   if (!nama_karyawan || !no_telp || !jabatan) {
     return res
       .status(400)
       .json({ status: 400, msg: "Field tidak boleh kosong" });
-  }
-
-  try {
-    currUser = await verifyUser(username, password);
-  } catch (error) {
-    return res.status(403).send({ status: 403, msg: error.message.toString() });
   }
 
   let q = await Karyawan.create({
@@ -205,21 +208,8 @@ app.post("/karyawan", async (req, res) => {
 });
 
 // ambil detail all karyawan
-app.get("/karyawan", async (req, res) => {
-  const { username, password } = req.body;
-
-  if (!username || !password) {
-    return res
-      .status(400)
-      .json({ status: 400, msg: "Field tidak boleh kosong" });
-  }
-
-  let currUser = null;
-  try {
-    currUser = await verifyUser(username, password);
-  } catch (error) {
-    return res.status(403).send({ status: 403, msg: error.message.toString() });
-  }
+app.get("/karyawan", [verifyUser], async (req, res) => {
+  let currUser = req.body.user;
 
   let h = await Karyawan.findAll({
     where: {
@@ -234,22 +224,10 @@ app.get("/karyawan", async (req, res) => {
 });
 
 // ambil detail karyawan
-app.get("/karyawan/:id", async (req, res) => {
-  const { username, password } = req.body;
+app.get("/karyawan/:id", [verifyUser], async (req, res) => {
   const { id } = req.params;
 
-  if (!username || !password) {
-    return res
-      .status(400)
-      .json({ status: 400, msg: "Field tidak boleh kosong" });
-  }
-
-  let currUser = null;
-  try {
-    currUser = await verifyUser(username, password);
-  } catch (error) {
-    return res.status(403).send({ status: 403, msg: error.message.toString() });
-  }
+  let currUser = req.body.user;
 
   let h = await Karyawan.findOne({
     where: {
@@ -260,6 +238,85 @@ app.get("/karyawan/:id", async (req, res) => {
 
   if (!h) {
     return res.status(404).json({ status: 404, msg: "Karyawan not found" });
+  }
+
+  return res.status(200).json({
+    status: 200,
+    msg: h,
+  });
+});
+
+// add animal
+app.post("/animal", [verifyUser], async (req, res) => {
+  let {
+    nama_panggilan: nama_panggilan = null,
+    nama_hewan,
+    kode_hewan: kode_hewan = null,
+    asal_hewan: asal_hewan = null,
+    status_is_child,
+  } = req.body;
+  let currUser = req.body.user;
+
+  if (!kode_hewan) {
+    kode_hewan = null;
+  }
+  if (!nama_panggilan) {
+    nama_panggilan = null;
+  }
+  if (!asal_hewan) {
+    asal_hewan = null;
+  }
+  //   console.log(kode_hewan, asal_hewan, nama_panggilan);
+  if (!nama_hewan || !status_is_child) {
+    return res
+      .status(400)
+      .json({ status: 400, msg: "Field tidak boleh kosong" });
+  }
+
+  let q = await Animal.create({
+    id_user: currUser.id_user,
+    nama_hewan: nama_hewan,
+    nama_panggilan: nama_panggilan,
+    kode_hewan: kode_hewan,
+    asal_hewan: asal_hewan,
+    status_is_child: status_is_child,
+  });
+
+  return res.status(201).json({
+    status: 201,
+    msg: "Berhasil add hewan " + nama_hewan,
+  });
+});
+
+app.get("/animal", [verifyUser], async (req, res) => {
+  let currUser = req.body.user;
+
+  let h = await Animal.findAll({
+    where: {
+      id_user: currUser.id_user,
+    },
+  });
+
+  return res.status(200).json({
+    status: 200,
+    msg: h,
+  });
+});
+
+app.get("/animal/:id", [verifyUser], async (req, res) => {
+  const { id } = req.params;
+
+  let currUser = req.body.user;
+
+  let h = await Animal.findOne({
+    where: {
+      id_user: currUser.id_user,
+      id_animal: id,
+    },
+  });
+
+  if (!h) {
+    return res.status(404).json({ status: 404, msg: "Animal not found" });
   }
 
   return res.status(200).json({

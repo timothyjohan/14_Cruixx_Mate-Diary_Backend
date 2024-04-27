@@ -1,8 +1,11 @@
 const express = require("express");
+const cors = require("cors");
+
 const app = express();
 app.set("port", 3000);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cors());
 
 const { getDB } = require("./conn");
 const sequelize = getDB();
@@ -10,9 +13,6 @@ const { QueryTypes } = require("sequelize");
 const Joi = require("joi").extend(require("@joi/date"));
 const axios = require("axios");
 const api_key_ninja = "gkTS6Qheb1LyvqHe3cf9uw==o0kuQj1oopyTEmaZ";
-
-const cors = require('cors')
-app.use(cors)
 
 // model
 const User = require("./model/User");
@@ -315,10 +315,10 @@ app.post("/breed", async function (req, res) {
   });
 });
 
-app.get("/history-breed", async function(req, res) {
-    const {animal_id} = req.query
+app.get("/history-breed", async function (req, res) {
+  const { animal_id } = req.query;
 
-    const breedQuery = `
+  const breedQuery = `
         SELECT 
             D_kawin.kawin_status AS Breed_Status,
             Fem_Animal.nama_hewan AS Female_Animal_Name,
@@ -336,48 +336,68 @@ app.get("/history-breed", async function(req, res) {
             Animal AS Male_Animal ON H_kawin.animal_male = Male_Animal.id_animal
         JOIN 
             User ON H_kawin.id_user = User.id_user
-        ${animal_id ? 
-            `
+        ${
+          animal_id
+            ? `
                 WHERE
                     Fem_Animal.id_animal = :animal_id OR Male_Animal.id_animal = :animal_id
-            ` : ''
+            `
+            : ""
         }
         ORDER BY 
             D_kawin.kawin_timestamp DESC
     `;
 
-    if (animal_id) {
-        const breedHistory = await sequelize.query(breedQuery, {
-            replacements: { animal_id },
-            type: sequelize.QueryTypes.SELECT
-        });
-        return res.status(200).json(breedHistory)
-    } else {
-        const breedHistory = await sequelize.query(breedQuery, {
-            type: sequelize.QueryTypes.SELECT
-        });
-        return res.status(200).json(breedHistory)
-    }
-})
+  if (animal_id) {
+    const breedHistory = await sequelize.query(breedQuery, {
+      replacements: { animal_id },
+      type: sequelize.QueryTypes.SELECT,
+    });
+    return res.status(200).json(breedHistory);
+  } else {
+    const breedHistory = await sequelize.query(breedQuery, {
+      type: sequelize.QueryTypes.SELECT,
+    });
+    return res.status(200).json(breedHistory);
+  }
+});
 
-app.post("/add-animal", async function(req, res) {
-    const {id_user, nama_hewan, status_is_child, nama_panggilan, kode_hewan, asal_hewan} = req.body
+app.post("/add-animal", async function (req, res) {
+  const {
+    id_user,
+    nama_hewan,
+    status_is_child,
+    nama_panggilan,
+    kode_hewan,
+    asal_hewan,
+  } = req.body;
 
-    if(!id_user || !nama_hewan || status_is_child === undefined) {
-        return res.status(400).send("Field tidak boleh kosong")
-    }
+  if (!id_user || !nama_hewan || status_is_child === undefined) {
+    return res.status(400).send("Field tidak boleh kosong");
+  }
 
-    const breedQuery = `
+  const breedQuery = `
         INSERT INTO Animal (id_user, nama_hewan, status_is_child, nama_panggilan, kode_hewan, asal_hewan)
         VALUES (:id_user, :nama_hewan, :status_is_child, :nama_panggilan, :kode_hewan, :asal_hewan)
     `;
 
-    await sequelize.query(breedQuery, {
-        replacements: { id_user, nama_hewan, status_is_child, nama_panggilan, kode_hewan, asal_hewan },
-        type: sequelize.QueryTypes.INSERT
-    });
-    return res.status(201).send(`Success add new animal ${nama_panggilan ? nama_panggilan : nama_hewan}`)
-})
+  await sequelize.query(breedQuery, {
+    replacements: {
+      id_user,
+      nama_hewan,
+      status_is_child,
+      nama_panggilan,
+      kode_hewan,
+      asal_hewan,
+    },
+    type: sequelize.QueryTypes.INSERT,
+  });
+  return res
+    .status(201)
+    .send(
+      `Success add new animal ${nama_panggilan ? nama_panggilan : nama_hewan}`
+    );
+});
 
 app.listen(app.get("port"), () => {
   console.log(`Server started at http://localhost:${app.get("port")}`);

@@ -167,6 +167,21 @@ app.post("/register", async function (req, res) {
   return res.status(201).send({ status: 1, msg: "Register sukses" });
 });
 
+app.get("/user", async (req, res) => {
+  const { username } = req.body;
+
+  let h = await User.findOne({
+    where: {
+      username: username,
+    },
+  });
+
+  return res.status(200).json({
+    status: 200,
+    msg: h,
+  });
+});
+
 app.get("/search_animal", async function (req, res) {
   const { name } = req.query;
 
@@ -505,49 +520,15 @@ app.get("/animal/:id", [verifyUser], async (req, res) => {
   });
 });
 
-app.post("/breed", async function (req, res) {
-  const { animal_a_id, animal_b_id } = req.body;
+app.post("/history", [verifyUser], async function (req, res) {
+  const { animal_fem, animal_male } = req.body;
+  let currUser = req.body.user;
 
-  if (animal_a_id === animal_b_id) {
-    return res.status(400).send("Animal yang di breed harus berbeda");
-  }
+  res.send("POST request to the homepage");
+});
 
-  const animalAQuery = "SELECT * FROM Animal WHERE id = :animal_a_id";
-  const [animalA] = await sequelize.query(animalAQuery, {
-    replacements: { animal_a_id },
-    type: sequelize.QueryTypes.SELECT,
-  });
-
-  const animalBQuery = "SELECT * FROM Animal WHERE id = :animal_b_id";
-  const [animalB] = await sequelize.query(animalBQuery, {
-    replacements: { animal_b_id },
-    type: sequelize.QueryTypes.SELECT,
-  });
-
-  axios
-    .get("https://api.api-ninjas.com/v1/animals?name=" + name, {
-      headers: {
-        "X-Api-Key": "gkTS6Qheb1LyvqHe3cf9uw==o0kuQj1oopyTEmaZ",
-      },
-    })
-    .then(function (response) {
-      console.log(response.data);
-    })
-    .catch(function (error) {
-      if (error) return console.error("Request failed:", error);
-      else
-        return console.error(
-          "Error:",
-          error.response.status,
-          error.response.data
-        );
-    });
-
-  return res.status(200).json({
-    username: users.username,
-    api_hit: users.api_hit,
-    history: history,
-  });
+app.get("/history", async (req, res) => {
+  res.send("GET request to the homepage");
 });
 
 app.get("/history-breed", async function (req, res) {

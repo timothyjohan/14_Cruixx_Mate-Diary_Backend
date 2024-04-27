@@ -642,11 +642,19 @@ app.get("/history", [verifyUser], async (req, res) => {
 });
 
 app.get("/history/details", [verifyUser], async (req, res) => {
+  const { id_h_kawin } = req.query;
   let currUser = req.query.user;
+
+  if (!id_h_kawin) {
+    return res.status(400).json({
+      status: 400,
+      msg: "semua field wajib diisi",
+    });
+  }
 
   let q = await D_kawin.findAll({
     where: {
-      id_company: currUser.id_company,
+      id_h_kawin: id_h_kawin,
     },
   });
 

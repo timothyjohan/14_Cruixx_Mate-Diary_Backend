@@ -66,40 +66,12 @@ CREATE TABLE Animal (
     kode_hewan VARCHAR(255) NOT NULL,
     asal_hewan VARCHAR(255),
     status_is_child INT NOT NULL,
+    parent_fem INT,
+    parent_male INT,
     PRIMARY KEY (id_animal),
     KEY id_company (id_company),
     FOREIGN KEY (id_company) REFERENCES Company(id_company)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
---
--- Table structure for table `Family`
---
-
-CREATE TABLE Family (
-    id_fam INT AUTO_INCREMENT,
-    id_company INT NOT NULL,
-    parent_fem INT NOT NULL,
-    parent_male INT NOT NULL,
-    PRIMARY KEY (id_fam),
-    KEY parent_fem (parent_fem),
-    KEY parent_male (parent_male),
-    KEY id_company (id_company),
-    FOREIGN KEY (id_company) REFERENCES Company(id_company),
-    FOREIGN KEY (parent_fem) REFERENCES Animal(id_animal),
-    FOREIGN KEY (parent_male) REFERENCES Animal(id_animal)
-);
-
---
--- Table structure for table `Child`
---
-
-CREATE TABLE Child (
-    id_child INT AUTO_INCREMENT,
-    id_fam INT NOT NULL,
-    PRIMARY KEY (id_child),
-    KEY id_fam (id_fam),
-    FOREIGN KEY (id_fam) REFERENCES Family(id_fam)
-);
 
 
 

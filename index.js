@@ -18,8 +18,6 @@ const api_key_ninja = "gkTS6Qheb1LyvqHe3cf9uw==o0kuQj1oopyTEmaZ";
 const User = require("./model/User");
 const Company = require("./model/Company");
 const Animal = require("./model/Animal");
-const Family = require("./model/Family");
-const Child = require("./model/Child");
 const H_kawin = require("./model/H_kawin");
 const D_kawin = require("./model/D_kawin");
 
@@ -30,19 +28,23 @@ User.belongsTo(Company, { foreignKey: "id_company" });
 Company.hasMany(Animal, { foreignKey: "id_company" });
 Animal.belongsTo(Company, { foreignKey: "id_company" });
 
-Company.hasMany(Family, { foreignKey: "id_company" });
-Family.belongsTo(Company, { foreignKey: "id_company" });
-
 Company.hasMany(H_kawin, { foreignKey: "id_company" });
 H_kawin.belongsTo(Company, { foreignKey: "id_company" });
-
-Family.hasMany(Child, { foreignKey: "id_user" });
-Child.belongsTo(Family, { foreignKey: "id_user" });
 
 H_kawin.hasMany(D_kawin, { foreignKey: "id_h_kawin" });
 D_kawin.belongsTo(H_kawin, { foreignKey: "id_h_kawin" });
 
 // func helper
+async function getAnimalByID(id_comp, id_animal) {
+  let h = await Animal.findOne({
+    where: {
+      id_company: id_comp,
+      id_animal: id_animal,
+    },
+  });
+
+  return h;
+}
 
 // middleware
 async function verifyUser(req, res, next) {
@@ -299,7 +301,8 @@ app.post("/animal", [verifyUser], async (req, res) => {
     gender,
     kode_hewan,
     asal_hewan,
-    status_is_child,
+    parent_fem,
+    parent_male,
   } = req.body;
   let currUser = req.body.user;
 
@@ -309,11 +312,73 @@ app.post("/animal", [verifyUser], async (req, res) => {
   if (!asal_hewan) {
     asal_hewan = null;
   }
+
+  if (!parent_fem) {
+    parent_fem = null;
+  }
+
+  if (!parent_male) {
+    parent_male = null;
+  }
+
   //   console.log(kode_hewan, asal_hewan, nama_panggilan);
-  if (!nama_hewan || !status_is_child || !gender || !kode_hewan) {
+  if (!nama_hewan || !gender || !kode_hewan) {
     return res
       .status(400)
       .json({ status: 400, msg: "Field tidak boleh kosong" });
+  }
+
+  //   pengecekan kode hewan hrs unik
+  let cek_kode = await Animal.findOne({
+    where: {
+      id_company: currUser.id_company,
+      kode_hewan: kode_hewan,
+    },
+  });
+
+  if (cek_kode) {
+    return res
+      .status(400)
+      .json({ status: 400, msg: "Kode hewan tidak boleh kembar" });
+  }
+
+  let status_is_child = 0;
+  if (parent_fem || parent_male) {
+    status_is_child = 1;
+  }
+
+  if (parent_fem) {
+    let pf = await Animal.findOne({
+      where: {
+        id_company: currUser.id_company,
+        id_animal: parent_fem,
+        gender: "Female",
+      },
+    });
+
+    if (!pf) {
+      return res.status(400).json({
+        status: 400,
+        msg: "id animal parent female yang dimasukkan tidak valid",
+      });
+    }
+  }
+
+  if (parent_male) {
+    let pm = await Animal.findOne({
+      where: {
+        id_company: currUser.id_company,
+        id_animal: parent_male,
+        gender: "Male",
+      },
+    });
+
+    if (!pm) {
+      return res.status(400).json({
+        status: 400,
+        msg: "id animal parent male yang dimasukkan tidak valid",
+      });
+    }
   }
 
   let q = await Animal.create({
@@ -324,6 +389,8 @@ app.post("/animal", [verifyUser], async (req, res) => {
     kode_hewan: kode_hewan,
     asal_hewan: asal_hewan,
     status_is_child: status_is_child,
+    parent_fem: parent_fem,
+    parent_male: parent_male,
   });
 
   return res.status(201).json({
@@ -333,6 +400,7 @@ app.post("/animal", [verifyUser], async (req, res) => {
 });
 
 app.get("/animal", [verifyUser], async (req, res) => {
+  const { gender, nickname, nama_hewan } = req.query;
   let currUser = req.body.user;
 
   let h = await Animal.findAll({
@@ -341,9 +409,77 @@ app.get("/animal", [verifyUser], async (req, res) => {
     },
   });
 
+  if (gender) {
+    h = h.filter((u) => u.gender == gender);
+  }
+
+  if (nickname) {
+    h = h.filter((u) =>
+      u.nama_panggilan.toLowerCase().includes(nickname.toLowerCase())
+    );
+  }
+
+  if (nama_hewan) {
+    h = h.filter((u) => u.nama_hewan.toLowerCase() == nama_hewan.toLowerCase());
+  }
+
   return res.status(200).json({
     status: 200,
     msg: h,
+  });
+});
+
+app.get("/animal/family/:id", [verifyUser], async (req, res) => {
+  const { id } = req.params;
+
+  let currUser = req.body.user;
+
+  let child = await getAnimalByID(currUser.id_company, id);
+
+  if (!child) {
+    return res.status(404).json({ status: 404, msg: "Animal not found" });
+  }
+
+  let parent_fem = await getAnimalByID(currUser.id_company, child.parent_fem);
+  let parent_male = await getAnimalByID(currUser.id_company, child.parent_male);
+
+  let nenek_parent_fem = null;
+  let kakek_parent_fem = null;
+  if (parent_fem) {
+    nenek_parent_fem = await getAnimalByID(
+      currUser.id_company,
+      parent_fem.parent_fem
+    );
+    kakek_parent_fem = await getAnimalByID(
+      currUser.id_company,
+      parent_fem.parent_male
+    );
+  }
+
+  let nenek_parent_male = null;
+  let kakek_parent_male = null;
+  if (parent_male) {
+    nenek_parent_male = await getAnimalByID(
+      currUser.id_company,
+      parent_male.parent_fem
+    );
+    kakek_parent_male = await getAnimalByID(
+      currUser.id_company,
+      parent_male.parent_male
+    );
+  }
+
+  return res.status(200).json({
+    status: 200,
+    msg: {
+      anak: child,
+      ibu: parent_fem,
+      ayah: parent_male,
+      nenek_ibu: nenek_parent_fem,
+      kakek_ibu: kakek_parent_fem,
+      nenek_ayah: nenek_parent_male,
+      kakek_ayah: kakek_parent_male,
+    },
   });
 });
 
@@ -366,64 +502,6 @@ app.get("/animal/:id", [verifyUser], async (req, res) => {
   return res.status(200).json({
     status: 200,
     msg: h,
-  });
-});
-
-app.post("/animal/family", [verifyUser], async (req, res) => {
-  const { id_male, id_fem } = req.body;
-
-  if (!id_male || !id_fem) {
-    return res
-      .status(400)
-      .json({ status: 400, msg: "Semua field harus diisi" });
-  }
-
-  let qm = await Animal.findOne({
-    where: {
-      id_animal: id_male,
-      gender: "Male",
-    },
-  });
-
-  let qf = await Animal.findOne({
-    where: {
-      id_animal: id_fem,
-      gender: "Female",
-    },
-  });
-
-  //   cek valid tak id nya
-  if (!qm || !qf) {
-    return res
-      .status(404)
-      .json({ status: 404, msg: "Id hewan tidak ditemukan" });
-  }
-
-  //   cek apakah udah ada fam disana
-  let cek = await Family.findOne({
-    where: {
-      parent_fem: id_fem,
-      parent_male: id_male,
-    },
-  });
-
-  if (cek) {
-    return res
-      .status(400)
-      .json({ status: 400, msg: "Family dengan 2 individu ini sudah ada" });
-  }
-
-  let currUser = req.body.user;
-
-  let h = await Family.create({
-    id_company: currUser.id_company,
-    parent_fem: id_fem,
-    parent_male: id_male,
-  });
-
-  return res.status(201).json({
-    status: 201,
-    msg: "Berhasil add family",
   });
 });
 

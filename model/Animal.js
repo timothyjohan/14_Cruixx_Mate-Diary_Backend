@@ -39,6 +39,14 @@ Animal.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    parent_fem: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    parent_male: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
   },
   {
     sequelize,

@@ -11,7 +11,7 @@ H_kawin.init(
       allowNull: false,
       autoIncrement: true,
     },
-    id_user: {
+    id_company: {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
@@ -23,7 +23,7 @@ H_kawin.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    id_karyawan: {
+    id_user: {
       type: DataTypes.INTEGER,
       allowNull: false,
     },

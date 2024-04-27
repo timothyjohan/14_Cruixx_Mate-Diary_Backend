@@ -11,6 +11,10 @@ User.init(
       allowNull: false,
       autoIncrement: true,
     },
+    id_company: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
     username: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -29,7 +33,7 @@ User.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    status: {
+    role: {
       type: DataTypes.STRING,
       allowNull: false,
     },

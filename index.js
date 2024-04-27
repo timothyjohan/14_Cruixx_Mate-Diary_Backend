@@ -11,6 +11,9 @@ const Joi = require('joi').extend(require('@joi/date'));
 const axios = require('axios')
 const api_key_ninja = "gkTS6Qheb1LyvqHe3cf9uw==o0kuQj1oopyTEmaZ"
 
+const cors = require('cors')
+app.use(cors)
+
 app.post("/login", async function(req, res) {
     const {username, password} = req.body
 

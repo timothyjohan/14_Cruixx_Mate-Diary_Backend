@@ -9,7 +9,7 @@ app.use(cors());
 
 const { getDB } = require("./conn");
 const sequelize = getDB();
-const { QueryTypes } = require("sequelize");
+const { QueryTypes, where } = require("sequelize");
 const Joi = require("joi").extend(require("@joi/date"));
 const axios = require("axios");
 const api_key_ninja = "gkTS6Qheb1LyvqHe3cf9uw==o0kuQj1oopyTEmaZ";
@@ -18,8 +18,8 @@ const api_key_ninja = "gkTS6Qheb1LyvqHe3cf9uw==o0kuQj1oopyTEmaZ";
 const User = require("./model/User");
 const Company = require("./model/Company");
 const Animal = require("./model/Animal");
-const H_kawin = require("./model/H_kawin");
 const D_kawin = require("./model/D_kawin");
+const H_kawin = require("./model/H_kawin");
 
 // relation
 Company.hasMany(User, { foreignKey: "id_company" });
@@ -44,6 +44,17 @@ async function getAnimalByID(id_comp, id_animal) {
   });
 
   return h;
+}
+
+function selisih(tgl) {
+  // let tgl_user = new Date(parseStringToDate(tgl));
+  let tgl_kelahiran = new Date(tgl);
+  let currDate = new Date();
+  // Menghitung selisih dalam hari
+  let differenceInDays = (tgl_kelahiran - currDate) / (1000 * 60 * 60 * 24);
+  //   supaya jadi 00:00:00
+
+  return parseInt(differenceInDays);
 }
 
 // middleware
@@ -571,18 +582,18 @@ app.post("/history", [verifyUser], async function (req, res) {
   let lamaWkt = ax.data[0].characteristics.gestation_period.split(" ")[0];
   lamaWkt = parseInt(lamaWkt);
 
+  let wktLahir = new Date();
+  wktLahir.setDate(wktLahir.getDate() + lamaWkt);
+
   let h_kawin = await H_kawin.create({
     id_company: currUser.id_company,
     id_user: currUser.id_user,
     animal_fem: animal_fem,
     animal_male: animal_male,
     status: "BEFORE",
-    tgl_kelahiran: null,
+    tgl_kelahiran: wktLahir,
     durasi_hamil: lamaWkt,
   });
-
-  let wktLahir = new Date();
-  wktLahir.setDate(wktLahir.getDate() + lamaWkt);
 
   let d_kawin = await D_kawin.create({
     id_h_kawin: h_kawin.id_h_kawin,
@@ -649,9 +660,17 @@ app.post("/history/details", [verifyUser], async (req, res) => {
   const { id_h_kawin } = req.query;
   let currUser = req.query.user;
 
+  if (!id_h_kawin) {
+    return res.status(400).json({
+      status: 400,
+      msg: "semua field wajib diisi",
+    });
+  }
+
   let q = await D_kawin.create({
     id_h_kawin: id_h_kawin,
     kawin_status: 0,
+    waktu_kawin: new Date(),
   });
 
   return res.status(200).json({
@@ -660,88 +679,48 @@ app.post("/history/details", [verifyUser], async (req, res) => {
   });
 });
 
-app.get("/history-breed", async function (req, res) {
-  const { animal_id } = req.query;
+app.put("/history/details", [verifyUser], async (req, res) => {
+  let { id_h_kawin, status, id_d_kawin } = req.query;
 
-  const breedQuery = `
-        SELECT 
-            D_kawin.kawin_status AS Breed_Status,
-            Fem_Animal.nama_hewan AS Female_Animal_Name,
-            Fem_Animal.nama_panggilan AS Female_Animal_Nickname,
-            Male_Animal.nama_hewan AS Male_Animal_Name,
-            Male_Animal.nama_panggilan AS Male_Animal_Nickname,
-            User.nickname AS User_Nickname
-        FROM 
-            H_kawin
-        JOIN 
-            D_kawin ON H_kawin.id_h_kawin = D_kawin.id_session
-        JOIN 
-            Animal AS Fem_Animal ON H_kawin.animal_fem = Fem_Animal.id_animal
-        JOIN 
-            Animal AS Male_Animal ON H_kawin.animal_male = Male_Animal.id_animal
-        JOIN 
-            User ON H_kawin.id_user = User.id_user
-        ${
-          animal_id
-            ? `
-                WHERE
-                    Fem_Animal.id_animal = :animal_id OR Male_Animal.id_animal = :animal_id
-            `
-            : ""
-        }
-        ORDER BY 
-            D_kawin.kawin_timestamp DESC
-    `;
+  let currUser = req.query.user;
 
-  if (animal_id) {
-    const breedHistory = await sequelize.query(breedQuery, {
-      replacements: { animal_id },
-      type: sequelize.QueryTypes.SELECT,
+  if (!id_d_kawin || !id_h_kawin || !status) {
+    return res.status(200).json({
+      status: 200,
+      msg: "semua field wajib diisi",
     });
-    return res.status(200).json(breedHistory);
-  } else {
-    const breedHistory = await sequelize.query(breedQuery, {
-      type: sequelize.QueryTypes.SELECT,
-    });
-    return res.status(200).json(breedHistory);
-  }
-});
-
-app.post("/add-animal", async function (req, res) {
-  const {
-    id_user,
-    nama_hewan,
-    status_is_child,
-    nama_panggilan,
-    kode_hewan,
-    asal_hewan,
-  } = req.body;
-
-  if (!id_user || !nama_hewan || status_is_child === undefined) {
-    return res.status(400).send("Field tidak boleh kosong");
   }
 
-  const breedQuery = `
-        INSERT INTO Animal (id_user, nama_hewan, status_is_child, nama_panggilan, kode_hewan, asal_hewan)
-        VALUES (:id_user, :nama_hewan, :status_is_child, :nama_panggilan, :kode_hewan, :asal_hewan)
-    `;
+  status = parseInt(status);
 
-  await sequelize.query(breedQuery, {
-    replacements: {
-      id_user,
-      nama_hewan,
-      status_is_child,
-      nama_panggilan,
-      kode_hewan,
-      asal_hewan,
+  let d_kawin = await D_kawin.findOne({
+    where: {
+      id_h_kawin: id_h_kawin,
+      id_d_kawin: id_d_kawin,
     },
-    type: sequelize.QueryTypes.INSERT,
   });
-  return res
-    .status(201)
-    .send(
-      `Success add new animal ${nama_panggilan ? nama_panggilan : nama_hewan}`
-    );
+
+  let h_kawin = await H_kawin.findOne({
+    where: {
+      id_company: currUser.id_company,
+      id_h_kawin: id_h_kawin,
+    },
+  });
+
+  let cd = -1;
+  if (status == 1) {
+    cd = selisih(h_kawin.tgl_kelahiran);
+  }
+
+  d_kawin.update({
+    kawin_status: status,
+  });
+
+  return res.status(200).json({
+    status: 200,
+    msg: "berhasil update d kawin",
+    cd: cd,
+  });
 });
 
 app.listen(app.get("port"), () => {

@@ -16,7 +16,7 @@ const api_key_ninja = "gkTS6Qheb1LyvqHe3cf9uw==o0kuQj1oopyTEmaZ";
 
 // model
 const User = require("./model/User");
-const Karyawan = require("./model/Karyawan");
+const Company = require("./model/Company");
 const Animal = require("./model/Animal");
 const Family = require("./model/Family");
 const Child = require("./model/Child");
@@ -24,22 +24,36 @@ const H_kawin = require("./model/H_kawin");
 const D_kawin = require("./model/D_kawin");
 
 // relation
-User.hasMany(Karyawan, { foreignKey: "id_user" });
-Karyawan.belongsTo(User, { foreignKey: "id_user" });
+Company.hasMany(User, { foreignKey: "id_company" });
+User.belongsTo(Company, { foreignKey: "id_company" });
 
-User.hasMany(Animal, { foreignKey: "id_user" });
-Animal.belongsTo(User, { foreignKey: "id_user" });
+Company.hasMany(Animal, { foreignKey: "id_company" });
+Animal.belongsTo(Company, { foreignKey: "id_company" });
+
+Company.hasMany(Family, { foreignKey: "id_company" });
+Family.belongsTo(Company, { foreignKey: "id_company" });
+
+Company.hasMany(H_kawin, { foreignKey: "id_company" });
+H_kawin.belongsTo(Company, { foreignKey: "id_company" });
 
 Family.hasMany(Child, { foreignKey: "id_user" });
 Child.belongsTo(Family, { foreignKey: "id_user" });
 
-async function verifyUser(username, password) {
-  //   const verifyUserQuery =
-  //     "SELECT count(*) FROM User WHERE username=:username AND password=:password";
-  //   const [countVerifyUser] = await sequelize.query(verifyUserQuery, {
-  //     replacements: { username, password },
-  //     type: sequelize.QueryTypes.SELECT,
-  //   });
+H_kawin.hasMany(D_kawin, { foreignKey: "id_h_kawin" });
+D_kawin.belongsTo(H_kawin, { foreignKey: "id_h_kawin" });
+
+// func helper
+
+// middleware
+async function verifyUser(req, res, next) {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res
+      .status(400)
+      .json({ status: 400, msg: "Username dan password tidak boleh kosong" });
+  }
+
   let h = await User.findOne({
     where: {
       username: username,
@@ -48,12 +62,16 @@ async function verifyUser(username, password) {
   });
 
   if (!h) {
-    throw new Error("Username / Password salah");
+    return res
+      .status(403)
+      .json({ status: 403, msg: "Username / Password salah" });
   }
 
-  return h;
+  req.body.user = h;
+  next();
 }
 
+// api
 app.post("/login", async function (req, res) {
   const { username, password } = req.body;
 
@@ -87,13 +105,18 @@ app.post("/login", async function (req, res) {
 });
 
 app.post("/register", async function (req, res) {
-  const { username, nickname, password, email, confirm_password } = req.body;
+  const {
+    username,
+    nickname,
+    password,
+    email,
+    company_name,
+    confirm_password,
+  } = req.body;
 
-  if (!username || !nickname || !password || !email) {
+  if (!username || !nickname || !password || !email || !company_name) {
     return res.status(400).send("Field tidak boleh kosong");
   }
-
-  let status = "Free";
 
   const existingUser =
     "SELECT count(*) as jum FROM User WHERE username=:username";
@@ -122,10 +145,20 @@ app.post("/register", async function (req, res) {
       .send({ status: 0, msg: "Password dan confirm password tidak sama" });
   }
 
+  let c = await Company.create({
+    nama: company_name,
+    status: "Free",
+  });
+
+  let id_comp = c.id_company;
+  console.log(id_comp);
+
+  let role = "owner";
+
   const registerQuery =
-    "INSERT INTO User (username, nickname, email, password, status) VALUES (:username, :nickname,:email, :password, :status)";
+    "INSERT INTO User (id_company, username, nickname, email, password, role) VALUES (:id_comp, :username, :nickname,:email, :password, :role)";
   await sequelize.query(registerQuery, {
-    replacements: { username, nickname, email, password, status },
+    replacements: { id_comp, username, nickname, email, password, role },
     type: sequelize.QueryTypes.INSERT,
   });
 
@@ -177,9 +210,9 @@ app.get("/search_animal", async function (req, res) {
 });
 
 // add karyawan
-app.post("/karyawan", async (req, res) => {
-  const { username, password, nama_karyawan, no_telp, jabatan } = req.body;
-  let currUser = null;
+app.post("/karyawan", [verifyUser], async (req, res) => {
+  const { nama_karyawan, username, password } = req.body;
+  let currUser = req.body.user;
 
   if (!nama_karyawan || !no_telp || !jabatan) {
     return res
@@ -187,17 +220,30 @@ app.post("/karyawan", async (req, res) => {
       .json({ status: 400, msg: "Field tidak boleh kosong" });
   }
 
-  try {
-    currUser = await verifyUser(username, password);
-  } catch (error) {
-    return res.status(403).send({ status: 403, msg: error.message.toString() });
+  let validUser = await User.findOne({
+    where: {
+      username: username,
+    },
+  });
+
+  let validKaryawan = await Karyawan.findOne({
+    where: {
+      username: username,
+    },
+  });
+
+  if (validUser || validKaryawan) {
+    return res.status(400).json({
+      status: 400,
+      msg: "Username sudah dipakai",
+    });
   }
 
   let q = await Karyawan.create({
     id_user: currUser.id_user,
     nama_karyawan: nama_karyawan,
-    no_telp: no_telp,
-    jabatan: jabatan,
+    username: username,
+    password: password,
   });
 
   return res.status(201).json({
@@ -207,21 +253,8 @@ app.post("/karyawan", async (req, res) => {
 });
 
 // ambil detail all karyawan
-app.get("/karyawan", async (req, res) => {
-  const { username, password } = req.body;
-
-  if (!username || !password) {
-    return res
-      .status(400)
-      .json({ status: 400, msg: "Field tidak boleh kosong" });
-  }
-
-  let currUser = null;
-  try {
-    currUser = await verifyUser(username, password);
-  } catch (error) {
-    return res.status(403).send({ status: 403, msg: error.message.toString() });
-  }
+app.get("/karyawan", [verifyUser], async (req, res) => {
+  let currUser = req.body.user;
 
   let h = await Karyawan.findAll({
     where: {
@@ -236,22 +269,10 @@ app.get("/karyawan", async (req, res) => {
 });
 
 // ambil detail karyawan
-app.get("/karyawan/:id", async (req, res) => {
-  const { username, password } = req.body;
+app.get("/karyawan/:id", [verifyUser], async (req, res) => {
   const { id } = req.params;
 
-  if (!username || !password) {
-    return res
-      .status(400)
-      .json({ status: 400, msg: "Field tidak boleh kosong" });
-  }
-
-  let currUser = null;
-  try {
-    currUser = await verifyUser(username, password);
-  } catch (error) {
-    return res.status(403).send({ status: 403, msg: error.message.toString() });
-  }
+  let currUser = req.body.user;
 
   let h = await Karyawan.findOne({
     where: {
@@ -267,6 +288,142 @@ app.get("/karyawan/:id", async (req, res) => {
   return res.status(200).json({
     status: 200,
     msg: h,
+  });
+});
+
+// add animal
+app.post("/animal", [verifyUser], async (req, res) => {
+  let {
+    nama_panggilan,
+    nama_hewan,
+    gender,
+    kode_hewan,
+    asal_hewan,
+    status_is_child,
+  } = req.body;
+  let currUser = req.body.user;
+
+  if (!nama_panggilan) {
+    nama_panggilan = null;
+  }
+  if (!asal_hewan) {
+    asal_hewan = null;
+  }
+  //   console.log(kode_hewan, asal_hewan, nama_panggilan);
+  if (!nama_hewan || !status_is_child || !gender || !kode_hewan) {
+    return res
+      .status(400)
+      .json({ status: 400, msg: "Field tidak boleh kosong" });
+  }
+
+  let q = await Animal.create({
+    id_company: currUser.id_company,
+    nama_hewan: nama_hewan,
+    nama_panggilan: nama_panggilan,
+    gender: gender,
+    kode_hewan: kode_hewan,
+    asal_hewan: asal_hewan,
+    status_is_child: status_is_child,
+  });
+
+  return res.status(201).json({
+    status: 201,
+    msg: "Berhasil add hewan " + nama_hewan,
+  });
+});
+
+app.get("/animal", [verifyUser], async (req, res) => {
+  let currUser = req.body.user;
+
+  let h = await Animal.findAll({
+    where: {
+      id_company: currUser.id_company,
+    },
+  });
+
+  return res.status(200).json({
+    status: 200,
+    msg: h,
+  });
+});
+
+app.get("/animal/:id", [verifyUser], async (req, res) => {
+  const { id } = req.params;
+
+  let currUser = req.body.user;
+
+  let h = await Animal.findOne({
+    where: {
+      id_company: currUser.id_company,
+      id_animal: id,
+    },
+  });
+
+  if (!h) {
+    return res.status(404).json({ status: 404, msg: "Animal not found" });
+  }
+
+  return res.status(200).json({
+    status: 200,
+    msg: h,
+  });
+});
+
+app.post("/animal/family", [verifyUser], async (req, res) => {
+  const { id_male, id_fem } = req.body;
+
+  if (!id_male || !id_fem) {
+    return res
+      .status(400)
+      .json({ status: 400, msg: "Semua field harus diisi" });
+  }
+
+  let qm = await Animal.findOne({
+    where: {
+      id_animal: id_male,
+      gender: "Male",
+    },
+  });
+
+  let qf = await Animal.findOne({
+    where: {
+      id_animal: id_fem,
+      gender: "Female",
+    },
+  });
+
+  //   cek valid tak id nya
+  if (!qm || !qf) {
+    return res
+      .status(404)
+      .json({ status: 404, msg: "Id hewan tidak ditemukan" });
+  }
+
+  //   cek apakah udah ada fam disana
+  let cek = await Family.findOne({
+    where: {
+      parent_fem: id_fem,
+      parent_male: id_male,
+    },
+  });
+
+  if (cek) {
+    return res
+      .status(400)
+      .json({ status: 400, msg: "Family dengan 2 individu ini sudah ada" });
+  }
+
+  let currUser = req.body.user;
+
+  let h = await Family.create({
+    id_company: currUser.id_company,
+    parent_fem: id_fem,
+    parent_male: id_male,
+  });
+
+  return res.status(201).json({
+    status: 201,
+    msg: "Berhasil add family",
   });
 });
 

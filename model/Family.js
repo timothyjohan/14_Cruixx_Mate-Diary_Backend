@@ -11,6 +11,10 @@ Family.init(
       allowNull: false,
       autoIncrement: true,
     },
+    id_company: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
     parent_fem: {
       type: DataTypes.INTEGER,
       allowNull: false,

@@ -2,38 +2,30 @@ const { Model, DataTypes } = require("sequelize");
 const { getDB } = require("../conn");
 const sequelize = getDB();
 
-class Karyawan extends Model {}
-Karyawan.init(
+class Company extends Model {}
+Company.init(
   {
-    id_karyawan: {
+    id_company: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       allowNull: false,
       autoIncrement: true,
     },
-    id_user: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    nama_karyawan: {
+    nama: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    no_telp: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    jabatan: {
+    status: {
       type: DataTypes.STRING,
       allowNull: false,
     },
   },
   {
     sequelize,
-    modelName: "Karyawan",
-    tableName: "karyawan",
+    modelName: "Company",
+    tableName: "company",
     timestamps: false,
   }
 );
 
-module.exports = Karyawan;
+module.exports = Company;

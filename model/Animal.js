@@ -11,7 +11,7 @@ Animal.init(
       allowNull: false,
       autoIncrement: true,
     },
-    id_user: {
+    id_company: {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
@@ -23,9 +23,13 @@ Animal.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    gender: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     kode_hewan: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
     },
     asal_hewan: {
       type: DataTypes.STRING,

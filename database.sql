@@ -33,6 +33,7 @@ CREATE TABLE User (
     id_user INT AUTO_INCREMENT,
     username VARCHAR(255) NOT NULL unique,
     nickname VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL unique,
     password VARCHAR(255) NOT NULL,
     status VARCHAR(255) NOT NULL, -- ini buat status user free / premium
     PRIMARY KEY (id_user)

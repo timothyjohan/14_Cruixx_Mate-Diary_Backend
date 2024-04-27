@@ -9,7 +9,7 @@ app.use(cors());
 
 const { getDB } = require("./conn");
 const sequelize = getDB();
-const { QueryTypes, where } = require("sequelize");
+const { QueryTypes, where, Op } = require("sequelize");
 const Joi = require("joi").extend(require("@joi/date"));
 const axios = require("axios");
 const api_key_ninja = "gkTS6Qheb1LyvqHe3cf9uw==o0kuQj1oopyTEmaZ";
@@ -738,24 +738,12 @@ app.put("/history/details", [verifyUser], async (req, res) => {
     },
   });
 
-  let h_kawin = await H_kawin.findOne({
-    where: {
-      id_company: currUser.id_company,
-      id_h_kawin: id_h_kawin,
-    },
-  });
-
-  let cd = -1;
-  let wktLahir = new Date();
-  wktLahir.setDate(wktLahir.getDate() + h_kawin.durasi_hamil);
-  if (status == 2) {
-    cd = selisih(wktLahir);
-
-    h_kawin.update({
-      tgl_kelahiran: wktLahir.toLocaleString(),
-      status: "ONGOING",
-    });
-  }
+  //   let h_kawin = await H_kawin.findOne({
+  //     where: {
+  //       id_company: currUser.id_company,
+  //       id_h_kawin: id_h_kawin,
+  //     },
+  //   });
 
   d_kawin.update({
     kawin_status: status,
@@ -764,7 +752,7 @@ app.put("/history/details", [verifyUser], async (req, res) => {
   return res.status(200).json({
     status: 200,
     msg: "berhasil update d kawin",
-    cd: cd,
+    // cd: cd,
   });
 });
 
@@ -774,8 +762,8 @@ app.put("/history", [verifyUser], async (req, res) => {
   let currUser = req.query.user;
 
   if (!id_h_kawin || !status) {
-    return res.status(200).json({
-      status: 200,
+    return res.status(400).json({
+      status: 400,
       msg: "semua field wajib diisi",
     });
   }
@@ -787,6 +775,17 @@ app.put("/history", [verifyUser], async (req, res) => {
     },
   });
 
+  let cd = -1;
+  let wktLahir = new Date();
+  wktLahir.setDate(wktLahir.getDate() + h_kawin.durasi_hamil);
+  if (status == "ONGOING") {
+    cd = selisih(wktLahir);
+
+    h_kawin.update({
+      tgl_kelahiran: wktLahir.toLocaleString(),
+    });
+  }
+
   h_kawin.update({
     status: status,
   });
@@ -794,6 +793,131 @@ app.put("/history", [verifyUser], async (req, res) => {
   return res.status(200).json({
     status: 200,
     msg: "berhasil update h kawin",
+  });
+});
+
+app.get("/prediction/d_kawin", [verifyUser], async (req, res) => {
+  const { id_animal } = req.query;
+  let currUser = req.query.user;
+
+  if (!id_animal) {
+    return res.status(400).json({
+      status: 400,
+      msg: "semua field wajib diisi",
+    });
+  }
+
+  let valid = await getAnimalByID(currUser.id_company, id_animal);
+
+  if (!valid) {
+    return res.status(404).json({
+      status: 404,
+      msg: "id animal not found",
+    });
+  }
+
+  //   cari semua berhasil di d_kawin / jum seluruh attempt di d_kawin
+  let allHistory = await H_kawin.findAll({
+    where: {
+      id_company: currUser.id_company,
+      [Op.or]: [
+        { animal_fem: id_animal },
+        {
+          animal_male: id_animal,
+        },
+      ],
+    },
+  });
+
+  let jumAll = 0;
+  let jumSuccess = 0;
+  for (let i = 0; i < allHistory.length; i++) {
+    const e = allHistory[i];
+
+    let all_d_kawin = await D_kawin.findAll({
+      where: {
+        id_h_kawin: e.id_h_kawin,
+      },
+    });
+
+    if (!all_d_kawin) {
+      all_d_kawin = [];
+    }
+
+    let all = all_d_kawin.filter(
+      (u) => u.kawin_status == 1 || u.kawin_status == 2
+    );
+    let succ = all.filter((u) => u.kawin_status == 2);
+
+    jumAll += all.length;
+    jumSuccess += succ.length;
+  }
+
+  let hasil_pred =
+    jumAll == 0 && jumSuccess == 0
+      ? 0
+      : parseInt(parseFloat(jumSuccess / jumAll) * 100);
+
+  return res.status(200).json({
+    status: 200,
+    msg: hasil_pred + "%",
+  });
+});
+
+// predict h_kawin
+app.get("/prediction/h_kawin", [verifyUser], async (req, res) => {
+  const { id_animal } = req.query;
+  let currUser = req.query.user;
+
+  if (!id_animal) {
+    return res.status(400).json({
+      status: 400,
+      msg: "semua field wajib diisi",
+    });
+  }
+
+  let valid = await getAnimalByID(currUser.id_company, id_animal);
+
+  if (!valid) {
+    return res.status(404).json({
+      status: 404,
+      msg: "id animal not found",
+    });
+  }
+
+  //   cari semua berhasil di d_kawin / jum seluruh attempt di d_kawin
+  let allHistory = await H_kawin.findAll({
+    where: {
+      id_company: currUser.id_company,
+    },
+  });
+
+  if (!allHistory) {
+    allHistory = [];
+  }
+
+  let jumAll = 0;
+  let jumSuccess = 0;
+
+  let all = allHistory.filter(
+    (u) =>
+      (u.animal_fem == id_animal || u.animal_male == id_animal) &&
+      (u.status == "FAIL" || u.status == "SUCCESS")
+  );
+  let succ = all.filter((u) => u.status == "SUCCESS");
+
+  jumAll += all.length;
+  jumSuccess += succ.length;
+
+  let hasil_pred =
+    jumAll == 0 && jumSuccess == 0
+      ? 0
+      : parseInt(parseFloat(jumSuccess / jumAll) * 100);
+
+  return res.status(200).json({
+    status: 200,
+    msg: hasil_pred + "%",
+    // tes: jumSuccess,
   });
 });
 

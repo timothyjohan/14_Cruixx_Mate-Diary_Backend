@@ -27,6 +27,18 @@ H_kawin.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    tgl_kelahiran: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    durasi_hamil: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
   },
   {
     sequelize,

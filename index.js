@@ -48,7 +48,7 @@ async function getAnimalByID(id_comp, id_animal) {
 
 // middleware
 async function verifyUser(req, res, next) {
-  const { username, password } = req.body;
+  const { username, password } = req.query;
 
   if (!username || !password) {
     return res
@@ -69,7 +69,7 @@ async function verifyUser(req, res, next) {
       .json({ status: 403, msg: "Username / Password salah" });
   }
 
-  req.body.user = h;
+  req.query.user = h;
   next();
 }
 
@@ -167,8 +167,8 @@ app.post("/register", async function (req, res) {
   return res.status(201).send({ status: 1, msg: "Register sukses" });
 });
 
-app.get("/user", async (req, res) => {
-  const { username } = req.body;
+app.post("/user", async (req, res) => {
+  const { username } = req.query;
 
   let h = await User.findOne({
     where: {
@@ -196,6 +196,7 @@ app.get("/search_animal", async function (req, res) {
     );
 
     const animalData = animalDataReq.data;
+
     const filteredAnimalName = { ...animalData.map((data) => data.name) };
     const animalNameList = Object.values(filteredAnimalName);
     if (animalNameList.length > 1) {
@@ -221,6 +222,7 @@ app.get("/search_animal", async function (req, res) {
     } else if (animalNameList.length === 1) {
       return res.status(200).json(animalData);
     }
+    // return res.status(200).json(animalNameList);
   } catch (e) {
     console.log(e);
   }
@@ -319,7 +321,7 @@ app.post("/animal", [verifyUser], async (req, res) => {
     parent_fem,
     parent_male,
   } = req.body;
-  let currUser = req.body.user;
+  let currUser = req.query.user;
 
   if (!nama_panggilan) {
     nama_panggilan = null;
@@ -367,7 +369,7 @@ app.post("/animal", [verifyUser], async (req, res) => {
       where: {
         id_company: currUser.id_company,
         id_animal: parent_fem,
-        gender: "Female",
+        gender: "FEMALE",
       },
     });
 
@@ -384,7 +386,7 @@ app.post("/animal", [verifyUser], async (req, res) => {
       where: {
         id_company: currUser.id_company,
         id_animal: parent_male,
-        gender: "Male",
+        gender: "MALE",
       },
     });
 
@@ -416,7 +418,7 @@ app.post("/animal", [verifyUser], async (req, res) => {
 
 app.get("/animal", [verifyUser], async (req, res) => {
   const { gender, nickname, nama_hewan } = req.query;
-  let currUser = req.body.user;
+  let currUser = req.query.user;
 
   let h = await Animal.findAll({
     where: {
@@ -447,7 +449,7 @@ app.get("/animal", [verifyUser], async (req, res) => {
 app.get("/animal/family/:id", [verifyUser], async (req, res) => {
   const { id } = req.params;
 
-  let currUser = req.body.user;
+  let currUser = req.query.user;
 
   let child = await getAnimalByID(currUser.id_company, id);
 
@@ -501,7 +503,7 @@ app.get("/animal/family/:id", [verifyUser], async (req, res) => {
 app.get("/animal/:id", [verifyUser], async (req, res) => {
   const { id } = req.params;
 
-  let currUser = req.body.user;
+  let currUser = req.query.user;
 
   let h = await Animal.findOne({
     where: {
@@ -522,13 +524,108 @@ app.get("/animal/:id", [verifyUser], async (req, res) => {
 
 app.post("/history", [verifyUser], async function (req, res) {
   const { animal_fem, animal_male } = req.body;
-  let currUser = req.body.user;
+  let currUser = req.query.user;
 
-  res.send("POST request to the homepage");
+  if (!animal_fem || !animal_male) {
+    return res
+      .status(404)
+      .json({ status: 404, msg: "Semua field wajib diisi" });
+  }
+
+  let pf = await Animal.findOne({
+    where: {
+      id_company: currUser.id_company,
+      id_animal: animal_fem,
+      gender: "FEMALE",
+    },
+  });
+
+  if (!pf) {
+    return res.status(400).json({
+      status: 400,
+      msg: "id animal parent female yang dimasukkan tidak valid",
+    });
+  }
+
+  let pm = await Animal.findOne({
+    where: {
+      id_company: currUser.id_company,
+      id_animal: animal_male,
+      gender: "MALE",
+    },
+  });
+
+  if (!pm) {
+    return res.status(400).json({
+      status: 400,
+      msg: "id animal parent male yang dimasukkan tidak valid",
+    });
+  }
+
+  let animal = await getAnimalByID(currUser.id_company, animal_fem);
+
+  let ax = await axios({
+    url: "https://api.api-ninjas.com/v1/animals?name=" + animal.nama_hewan,
+    headers: {
+      "X-Api-Key": api_key_ninja,
+    },
+  });
+
+  let lamaWkt = ax.data[0].characteristics.gestation_period.split(" ")[0];
+  lamaWkt = parseInt(lamaWkt);
+
+  let h_kawin = await H_kawin.create({
+    id_company: currUser.id_company,
+    id_user: currUser.id_user,
+    animal_fem: animal_fem,
+    animal_male: animal_male,
+    status: "BEFORE",
+    tgl_kelahiran: null,
+    durasi_hamil: lamaWkt,
+  });
+
+  let wktLahir = new Date();
+  wktLahir.setDate(wktLahir.getDate() + lamaWkt);
+
+  let d_kawin = await D_kawin.create({
+    id_h_kawin: h_kawin.id_h_kawin,
+    kawin_status: 0,
+  });
+
+  return res.status(201).json({
+    status: 201,
+    msg: "Add history success",
+  });
 });
 
-app.get("/history", async (req, res) => {
-  res.send("GET request to the homepage");
+app.get("/history", [verifyUser], async (req, res) => {
+  let currUser = req.query.user;
+
+  let q = await H_kawin.findAll({
+    where: {
+      id_company: currUser.id_company,
+    },
+  });
+
+  return res.status(200).json({
+    status: 200,
+    msg: q,
+  });
+});
+
+app.get("/history/details", [verifyUser], async (req, res) => {
+  let currUser = req.query.user;
+
+  let q = await D_kawin.findAll({
+    where: {
+      id_company: currUser.id_company,
+    },
+  });
+
+  return res.status(200).json({
+    status: 200,
+    msg: q,
+  });
 });
 
 app.get("/history-breed", async function (req, res) {

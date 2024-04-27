@@ -36,6 +36,9 @@ CREATE TABLE Company (
     PRIMARY KEY (id_company)
 );
 
+insert into company(nama, status) values('Animal Conservation A', 'FREE');
+insert into company(nama, status) values('Beternak Yes', 'PREMIUM');
+
 --
 -- Table structure for table `User`
 --
@@ -52,6 +55,11 @@ CREATE TABLE User (
     KEY id_company (id_company),
     FOREIGN KEY (id_company) REFERENCES Company(id_company)
 );
+
+insert into user(id_company,username,password,nickname,email,role) values(1,"buse1","buse123","Budi Setiawan",'budiset1@gmail.com',"OWNER");
+insert into user(id_company,username,password,nickname,email,role) values(2,"andis","anse123","Andi Setiawan",'andiset1@gmail.com',"OWNER");
+insert into user(id_company,username,password,nickname,email,role) values(2,"jon11","jonjon123","Jonny",'-',"PEGAWAI");
+insert into user(id_company,username,password,nickname,email,role) values(2,"cc123","ch123ch","Cherly C",'-',"PEGAWAI");
 
 --
 -- Table structure for table `Animal`
@@ -73,7 +81,14 @@ CREATE TABLE Animal (
     FOREIGN KEY (id_company) REFERENCES Company(id_company)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-
+INSERT INTO animal (id_company,nama_panggilan,nama_hewan,gender,kode_hewan,asal_hewan,status_is_child,parent_fem,parent_male) values
+(1, 'Cici', 'Cheetah', 'FEMALE', 'ACA0000001','Doda Zoo', 0, null, null),
+(1, 'Cycy', 'Cheetah', 'FEMALE', 'ACA0000002','Doda Zoo', 0, null, null),
+(1, 'Sam', 'Cheetah', 'MALE', 'ACA0000003','Poli Zoo', 0, null, null),
+(1, 'Lulu', 'Cheetah', 'FEMALE', 'ACA0000004','Animal Conservation A', 1, 2, 3),
+(1, 'Lala', 'Cheetah', 'FEMALE', 'ACA0000005','Animal Conservation A', 1, 2, 3),
+(1, 'Lili', 'Cheetah', 'FEMALE', 'ACA0000006','Animal Conservation A', 1, 2, 3),
+(1, 'Luis', 'Cheetah', 'MALE', 'ACA0000007','Animal Conservation A', 1, 1, 3);
 
 --
 -- Table structure for table `H_kawin`
@@ -85,6 +100,9 @@ CREATE TABLE H_kawin (
     id_user INT NOT NULL,
     animal_fem INT NOT NULL,
     animal_male INT NOT NULL,
+    status VARCHAR(255) NOT NULL,
+    durasi_hamil INT NOT NULL,
+    tgl_kelahiran timestamp,
     PRIMARY KEY (id_h_kawin),
     KEY animal_fem (animal_fem),
     KEY animal_male (animal_male),
@@ -104,7 +122,6 @@ CREATE TABLE D_kawin (
     id_d_kawin INT AUTO_INCREMENT,
     id_h_kawin INT NOT NULL,
     kawin_status INT NOT NULL, -- berhasil / gagal
-    kawin_timestamp timestamp NOT NULL,
     PRIMARY KEY (id_d_kawin),
     KEY id_h_kawin (id_h_kawin),
     FOREIGN KEY (id_h_kawin) REFERENCES H_kawin(id_h_kawin)

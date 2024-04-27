@@ -11,16 +11,12 @@ D_kawin.init(
       allowNull: false,
       autoIncrement: true,
     },
-    id_session: {
+    id_h_kawin: {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
     kawin_status: {
       type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    kawin_timestamp: {
-      type: DataTypes.DATE,
       allowNull: false,
     },
   },

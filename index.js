@@ -643,7 +643,7 @@ app.post("/history", [verifyUser], async function (req, res) {
   if (!pf) {
     return res.status(400).json({
       status: 400,
-      msg: "id animal parent female yang dimasukkan tidak valid",
+      msg: "id animal female yang dimasukkan tidak valid",
     });
   }
 
@@ -658,7 +658,14 @@ app.post("/history", [verifyUser], async function (req, res) {
   if (!pm) {
     return res.status(400).json({
       status: 400,
-      msg: "id animal parent male yang dimasukkan tidak valid",
+      msg: "id animal male yang dimasukkan tidak valid",
+    });
+  }
+
+  if (pm.nama_hewan != pf.nama_hewan) {
+    return res.status(400).json({
+      status: 400,
+      msg: "jenis hewan yang dimasukkan harus sama",
     });
   }
 
@@ -1065,6 +1072,58 @@ app.get("/countdown", [verifyUser], async (req, res) => {
   return res.status(200).json({
     status: 200,
     msg: cd,
+  });
+});
+
+app.get("/in_breed", [verifyUser], async (req, res) => {
+  const { id_animal_fem, id_animal_male } = req.query;
+
+  let currUser = req.query.user;
+
+  let fem = await getAnimalByID(currUser.id_company, id_animal_fem);
+
+  let male = await getAnimalByID(currUser.id_company, id_animal_male);
+
+  if (!fem || !male) {
+    return res.status(404).json({ status: 404, msg: "Animal not found" });
+  }
+
+  if (fem.nama_hewan != male.nama_hewan) {
+    return res.status(400).json({
+      status: 400,
+      msg: "jenis hewan yang dimasukkan harus sama",
+    });
+  }
+
+  //   fem parent
+  let ibu_fem = await getAnimalByID(currUser.id_company, fem.parent_fem);
+  let ayah_fem = await getAnimalByID(currUser.id_company, fem.parent_male);
+
+  //   male parent
+  let ibu_male = await getAnimalByID(currUser.id_company, male.parent_fem);
+  let ayah_male = await getAnimalByID(currUser.id_company, male.parent_male);
+
+  if (ibu_fem && ibu_male) {
+    if (ibu_fem.id_animal == ibu_male.id_animal) {
+      return res.status(400).json({
+        status: 400,
+        safe: false,
+      });
+    }
+  }
+
+  if (ayah_fem && ayah_male) {
+    if (ayah_fem.id_animal == ayah_male.id_animal) {
+      return res.status(400).json({
+        status: 400,
+        safe: false,
+      });
+    }
+  }
+
+  return res.status(200).json({
+    status: 200,
+    safe: true,
   });
 });
 

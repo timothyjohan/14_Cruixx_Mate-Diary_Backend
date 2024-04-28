@@ -1076,13 +1076,13 @@ app.get("/countdown", [verifyUser], async (req, res) => {
 });
 
 app.get("/in_breed", [verifyUser], async (req, res) => {
-  const { id_animal_fem, id_animal_male } = req.query;
+  const { animal_fem, animal_male } = req.query;
 
   let currUser = req.query.user;
 
-  let fem = await getAnimalByID(currUser.id_company, id_animal_fem);
+  let fem = await getAnimalByID(currUser.id_company, animal_fem);
 
-  let male = await getAnimalByID(currUser.id_company, id_animal_male);
+  let male = await getAnimalByID(currUser.id_company, animal_male);
 
   if (!fem || !male) {
     return res.status(404).json({ status: 404, msg: "Animal not found" });
